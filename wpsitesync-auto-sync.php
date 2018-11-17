@@ -63,6 +63,12 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 				add_action('save_post', array($this, 'save_post'), 10, 1);
 			}
 			add_action('admin_notices', array($this, 'admin_notice'));
+			add_action('spectrom_sync_metabox_after_button', array($this, 'output_metabox_message'));
+		}
+
+		public function output_metabox_message()
+		{
+			echo '<div style="margin-top:5px">* ', __('Auto Sync currently activated.', 'wpsitesync-auto-sync'), '</div>';
 		}
 
 		/**
@@ -124,7 +130,6 @@ SyncDebug::log(__METHOD__.'():' . __LINE__ . ' saving post ' . $post_id);
 		{
 			if ($this->_pushed)
 				return;
-			$this->_pushed = TRUE;
 
 			$controller = SyncApiController::get_instance();
 			if (NULL !== $controller && !empty($controller->source_site_key)) {
@@ -137,20 +142,20 @@ SyncDebug::log(__METHOD__.'():' . __LINE__ . ' saving post ' . $post_id);
 			$post_type = $post->post_type;
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post id: ' . $post_id . ' post type: ' . $post_type);
 			if (0 !== $post_id && in_array($post_type, apply_filters('spectrom_sync_allowed_post_types', array('post', 'page')))) {
-				$sync_model = new SyncModel();
-				$sync_data = $sync_model->get_sync_data($post_id, NULL, $post->post_type);
-SyncDebug::log(__METHOD__.'():' . __LINE__ . ' sync data: ' . var_export($sync_data, TRUE));
-				if (NULL === $sync_data) {
-					// post has not yet been pushed - push it
-					$api = new SyncApiRequest();
-					$api_response = $api->api('push', array('post_id' => $post_id));
+				// use API to push the post
+				$api = new SyncApiRequest();
+				$api_response = $api->api('push', array('post_id' => $post_id));
+
+				// mark this as having been pushed so we don't re-enter
+				$this->_pushed = TRUE;
+
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' api response: ' . var_export($api_response, TRUE));
-					$user_id = get_current_user_id();
-					$key = self::META_KEY . $user_id;
-					$code = $api_response->get_error_code();
+				$user_id = get_current_user_id();
+				$key = self::META_KEY . $user_id;
+				$code = $api_response->get_error_code();
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' error code: ' . $code);
-					add_user_meta($user_id, $key, $code, TRUE);
-				}
+
+				add_user_meta($user_id, $key, $code, TRUE);
 			} // post_id && post_type
 		}
 
