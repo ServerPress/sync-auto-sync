@@ -51,7 +51,7 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 		 */
 		public function init()
 		{
-//SyncDebug::log(__METHOD__.'()');
+SyncDebug::log(__METHOD__.'()');
 			add_filter('spectrom_sync_active_extensions', array($this, 'filter_active_extensions'), 10, 2);
 
 			$this->_license = new SyncLicensing();
@@ -59,8 +59,8 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 #				return;
 
 			if (1 === SyncOptions::get_int('auth', 0)) {
-				add_action('transition_post_status', array($this, 'transition_post'), 10, 3);
-				add_action('save_post', array($this, 'save_post'), 10, 1);
+//				add_action('transition_post_status', array($this, 'transition_post'), 10, 3);
+				add_action('save_post', array($this, 'save_post'), 999, 1);
 			}
 			add_action('admin_notices', array($this, 'admin_notice'));
 			add_action('spectrom_sync_metabox_after_button', array($this, 'output_metabox_message'));
@@ -103,7 +103,8 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 		 */
 		public function transition_post($new_status, $old_status, $post)
 		{
-			if ('publish' === $new_status) {
+SyncDebug::log(__METHOD__."('{$new_status}', '{$old_status}', {$post->ID})");
+			if ('publish' === $new_status && $new_status !== $old_status) {
 				$this->synchronize_content($post);
 			} // 'publish' === $new_status
 		}
@@ -115,11 +116,35 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 		public function save_post($post_id)
 		{
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' saving post ' . $post_id);
+			global $post;
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post: ' . var_export($post, TRUE));
+
+			// check for empty or newly created post
+			if (NULL === $post) {
+				$new_post = get_post($post_id, OBJECT);
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' new post: ' . var_export($new_post, TRUE));
+				if (NULL === $new_post) {
+					// this is a new post; don't need to sync until it's been saved
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' get_post(' . $post_id . ') returned NULL');
+					return;
+				}
+				if ('auto-draft' === $new_post->post_status || 'draft' === $new_post->post_status) {
+					// it's an auto-draft or new post; don't need to sync until it's been saved
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post status is "auto-draft" or "draft"');
+					return;
+				}
+			}
+
 			// check for post revisions; don't need to send those
-			if (wp_is_post_revision($post_id))
+			if (wp_is_post_revision($post_id)) {
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post revision');
 				return;
-			$post = get_post($post_id);
-			$this->synchronize_content($post);
+			}
+
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' automatically syncing content');
+			$the_post = get_post($post_id);
+			if (NULL !== $the_post)
+				$this->synchronize_content($the_post);
 		}
 
 		/**
@@ -134,7 +159,7 @@ SyncDebug::log(__METHOD__.'():' . __LINE__ . ' saving post ' . $post_id);
 			$controller = SyncApiController::get_instance();
 			if (NULL !== $controller && !empty($controller->source_site_key)) {
 				// Controller has been instantiated.
-				// This means that post is being updated via WPSS API call and we don't need to do anything
+				// This means that post is being updated via WPSS API call on the Target and we don't need to do anything
 				return;
 			}
 
