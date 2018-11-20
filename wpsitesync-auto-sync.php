@@ -66,6 +66,9 @@ SyncDebug::log(__METHOD__.'()');
 			add_action('spectrom_sync_metabox_after_button', array($this, 'output_metabox_message'));
 		}
 
+		/**
+		 * Outputs a message in the WPSiteSync metabox informing user that Auto Sync is active
+		 */
 		public function output_metabox_message()
 		{
 			echo '<div style="margin-top:5px">* ', __('Auto Sync currently activated.', 'wpsitesync-auto-sync'), '</div>';
