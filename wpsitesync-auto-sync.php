@@ -250,10 +250,10 @@ SyncDebug::log(__METHOD__.'():' . __LINE__ . ' msg: ' . $msg);
 		}
 
 		/**
-		 * Add the CPT add-on to the list of known WPSiteSync extensions
+		 * Add the Auto Sync add-on to the list of known WPSiteSync extensions
 		 * @param array $extensions The list to add to
 		 * @param boolean $set
-		 * @return array The list of extensions, with the WPSiteSync CPT add-on included
+		 * @return array The list of extensions, with the WPSiteSync Auto Sync add-on included
 		 */
 		public function filter_active_extensions($extensions, $set = FALSE)
 		{
