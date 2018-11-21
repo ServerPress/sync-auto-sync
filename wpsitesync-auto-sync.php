@@ -23,11 +23,10 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 
 		const PLUGIN_NAME = 'WPSiteSync for Auto Sync';
 		const PLUGIN_VERSION = '1.0';
-		const PLUGIN_KEY = '3d84bae3c42eb72b5e1597af3c2e7ce9';
+		const PLUGIN_KEY = 'cfd9d212ba96281cdd0d946c7194925a';
 
 		const META_KEY = 'spectrom_sync_auto_sync_msg_';
 
-		private $_license = NULL;
 		private $_pushed = FALSE;
 
 		private function __construct()
@@ -54,9 +53,10 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 SyncDebug::log(__METHOD__.'()');
 			add_filter('spectrom_sync_active_extensions', array($this, 'filter_active_extensions'), 10, 2);
 
-			$this->_license = new SyncLicensing();
-#			if (!$this->_license->check_license('sync_auto_sync', self::PLUGIN_KEY, self::PLUGIN_NAME))
-#				return;
+			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_autosync', self::PLUGIN_KEY, self::PLUGIN_NAME)) {
+SyncDebug::log(__METHOD__ . '() no license');
+				return;
+			}
 
 			if (1 === SyncOptions::get_int('auth', 0)) {
 //				add_action('transition_post_status', array($this, 'transition_post'), 10, 3);
@@ -64,6 +64,7 @@ SyncDebug::log(__METHOD__.'()');
 			}
 			add_action('admin_notices', array($this, 'admin_notice'));
 			add_action('spectrom_sync_metabox_after_button', array($this, 'output_metabox_message'));
+			add_action('spectrom_sync_push_content', array($this, 'push_notification'), 3);
 		}
 
 		/**
@@ -118,6 +119,10 @@ SyncDebug::log(__METHOD__."('{$new_status}', '{$old_status}', {$post->ID})");
 		 */
 		public function save_post($post_id)
 		{
+			// Note: save_post() gets called twice when SyncApiController::push() does a wp_update_post().
+			// Once for the post revision that is created and once for the actual post being updated. The
+			// check for wp_is_post_revision() catches this and does not sync the revision.
+
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' saving post ' . $post_id);
 			global $post;
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post: ' . var_export($post, TRUE));
@@ -144,26 +149,54 @@ SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post revision');
 				return;
 			}
 
-SyncDebug::log(__METHOD__.'():' . __LINE__ . ' automatically syncing content');
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' automatically syncing content for post id ' . $post_id);
 			$the_post = get_post($post_id);
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' content=' . $the_post->post_content);
 			if (NULL !== $the_post)
 				$this->synchronize_content($the_post);
 		}
 
 		/**
+		 * Callback for the 'spectrom_sync_push_content' action signaled by SyncApiController on completion of push operation
+		 * @param int $post_id Post ID that was updated
+		 * @param array $post_data The array of post data (not used)
+		 * @param SyncApiResponse $response Instance of the response object (not used)
+		 */
+		public function push_notification($post_id, $post_data = array(), $response = NULL)
+		{
+			// TODO: check license
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' received push notification from SyncApiController; post id=' . $post_id);
+			if (1 === SyncOptions::get_int('auth', 0)) {
+				// only synchronize content if there's a valid Target
+				$the_post = get_post($post_id);
+				if (NULL !== $the_post)								// double check that the post was created
+					$this->synchronize_content($the_post, TRUE);	// synchronize the content
+			} else {
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' Target site not authenticated; not processing Push notification');
+			}
+		}
+
+		/**
 		 * Helper method use to push content to Target site
 		 * @param object $post The post information
+		 * @param boolean $override TRUE to override the SyncApiController check; otherwise FALSE
 		 */
-		private function synchronize_content($post)
+		private function synchronize_content($post, $override = FALSE)
 		{
-			if ($this->_pushed)
+			if ($this->_pushed) {
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' content already pushed');
 				return;
+			}
 
 			$controller = SyncApiController::get_instance();
 			if (NULL !== $controller && !empty($controller->source_site_key)) {
-				// Controller has been instantiated.
-				// This means that post is being updated via WPSS API call on the Target and we don't need to do anything
-				return;
+				if (!$override) {
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' called from SyncApiController instance');
+					// Controller has been instantiated.
+					// This means that post is being updated via WPSS API call on the Target and we don't need to do anything
+					return;
+				}
+else SyncDebug::log(__METHOD__.'():' . __LINE__ . ' overriding SyncApiController check');
 			}
 
 			$post_id = abs($post->ID);
@@ -225,8 +258,8 @@ SyncDebug::log(__METHOD__.'():' . __LINE__ . ' msg: ' . $msg);
 		public function filter_active_extensions($extensions, $set = FALSE)
 		{
 //SyncDebug::log(__METHOD__.'()');
-			if ($set || $this->_license->check_license('sync_auto_sync', self::PLUGIN_KEY, self::PLUGIN_NAME))
-				$extensions['sync_auto_sync'] = array(
+			if ($set || WPSiteSyncContent::get_instance()->get_license()->check_license('sync_autosync', self::PLUGIN_KEY, self::PLUGIN_NAME))
+				$extensions['sync_autosync'] = array(
 					'name' => self::PLUGIN_NAME,
 					'version' => self::PLUGIN_VERSION,
 					'file' => __FILE__,
