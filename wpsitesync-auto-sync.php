@@ -2,10 +2,10 @@
 /*
 Plugin Name: WPSiteSync for Auto Sync
 Plugin URI: https://wpsitesync.com
-Description: Works with <a href="/wp-admin/plugin-install.php?tab=search&s=wpsitesync">WPSiteSync for Content</a> to automatically synchronizes Content to Target site whenever it's edited.
+Description: Works with <a href="/wp-admin/plugin-install.php?tab=search&s=wpsitesync">WPSiteSync for Content</a> to automatically synchronize Content to Target site whenever it's edited.
 Author: WPSiteSync
 Author URI: https://wpsitesync.com
-Version: 1.0
+Version: 1.1
 Text Domain: wpsitesync-auto-sync
 Domain path: /language
 
@@ -22,7 +22,7 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 		private static $_instance = NULL;
 
 		const PLUGIN_NAME = 'WPSiteSync for Auto Sync';
-		const PLUGIN_VERSION = '1.0';
+		const PLUGIN_VERSION = '1.1';
 		const PLUGIN_KEY = 'cfd9d212ba96281cdd0d946c7194925a';
 
 		const META_KEY = 'spectrom_sync_auto_sync_msg_';
@@ -50,7 +50,7 @@ if (!class_exists('WPSiteSync_Auto_Sync', FALSE)) {
 		 */
 		public function init()
 		{
-SyncDebug::log(__METHOD__.'()');
+//SyncDebug::log(__METHOD__.'()');
 			add_filter('spectrom_sync_active_extensions', array($this, 'filter_active_extensions'), 10, 2);
 
 			if (!WPSiteSyncContent::get_instance()->get_license()->check_license('sync_autosync', self::PLUGIN_KEY, self::PLUGIN_NAME)) {
@@ -149,6 +149,14 @@ SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post revision');
 				return;
 			}
 
+			// check the post type
+			$allowed = apply_filters('spectrom_sync_allowed_post_types', array('post', 'page'));
+			$the_post = get_post($post_id);
+			if (!in_array($the_post->post_type, $allowed)) {
+SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post type "' . $the_post->post_type . '" not an allowed type');
+				return;
+			}
+
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' automatically syncing content for post id ' . $post_id);
 			$the_post = get_post($post_id);
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' content=' . $the_post->post_content);
@@ -177,7 +185,7 @@ SyncDebug::log(__METHOD__.'():' . __LINE__ . ' Target site not authenticated; no
 		}
 
 		/**
-		 * Helper method use to push content to Target site
+		 * Helper method used to push content to Target site
 		 * @param object $post The post information
 		 * @param boolean $override TRUE to override the SyncApiController check; otherwise FALSE
 		 */
