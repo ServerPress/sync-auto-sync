@@ -82,6 +82,7 @@ SyncDebug::log(__METHOD__ . '() no license');
 		{
 			if (is_admin() && !class_exists('WPSiteSyncContent', FALSE) && current_user_can('activate_plugins')) {
 				add_action('admin_notices', array($this, 'notice_requires_wpss'));
+				add_action('admin_init', array($this, 'disable_plugin'));
 			}
 		}
 
@@ -93,10 +94,18 @@ SyncDebug::log(__METHOD__ . '() no license');
 			$install = admin_url('plugin-install.php?tab=search&s=wpsitesync');
 			$activate = admin_url('plugins.php');
 			echo '<div class="notice notice-warning">';
-			echo	'<p>', sprintf(__('The <em>WPSiteSync for Auto Publish</em> plugin requires the main <em>WPSiteSync for Content</em> plugin to be installed and activated. Please %1$sclick here</a> or %2$sclick here</a> to activate.', 'wpsitesync-auto-sync'),
+			echo	'<p>', sprintf(__('The <em>WPSiteSync for Auto Sync</em> plugin requires the main <em>WPSiteSync for Content</em> plugin to be installed and activated. Please %1$sclick here</a> or %2$sclick here</a> to activate.', 'wpsitesync-auto-sync'),
 						'<a href="' . $install . '">',
 						'<a href="' . $activate . '">'), '</p>';
 			echo '</div>';
+		}
+
+		/**
+		 * Disables the plugin if WPSiteSync not installed or ACF is too old
+		 */
+		public function disable_plugin()
+		{
+			deactivate_plugins(plugin_basename(__FILE__));
 		}
 
 		/**
