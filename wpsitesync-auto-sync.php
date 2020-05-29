@@ -63,7 +63,7 @@ SyncDebug::log(__METHOD__ . '() no license');
 				add_action('save_post', array($this, 'save_post'), 999, 1);
 			}
 			add_action('admin_notices', array($this, 'admin_notice'));
-			add_action('spectrom_sync_metabox_after_button', array($this, 'output_metabox_message'));
+			add_action('spectrom_sync_metabox_after_button', array($this, 'output_metabox_message'), 100);
 			add_action('spectrom_sync_push_content', array($this, 'push_notification'), 3);
 		}
 
