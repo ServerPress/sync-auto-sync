@@ -1,0 +1,3 @@
+* enhancement: Update .htaccess rules for Apache 2.4.
+* enhancement: Move the "Auto Sync is active" message under the Push and Pull buttons.
+* enhancement: Check for presents of WPSiteSync and disable if not found.
