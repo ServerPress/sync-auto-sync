@@ -220,9 +220,21 @@ else SyncDebug::log(__METHOD__.'():' . __LINE__ . ' overriding SyncApiController
 			$post_type = $post->post_type;
 SyncDebug::log(__METHOD__.'():' . __LINE__ . ' post id: ' . $post_id . ' post type: ' . $post_type);
 			if (0 !== $post_id && in_array($post_type, apply_filters('spectrom_sync_allowed_post_types', array('post', 'page')))) {
+				// set up arguments array for SyncApiRequest::api() call
+				$api_args = array(
+					'post_id' => $post_id,
+				);
+
+				// if the content has been sync'd before, include the Target's post ID in the API request
+				$model = new SyncModel();
+				$sync_data = $model->get_sync_data($ost_id, NULL, $post_type);
+				if (NULL !== $sync_data) {
+					$api_args['target_post_id'] = $sync_data->target_content_id;
+				}
+
 				// use API to push the post
 				$api = new SyncApiRequest();
-				$api_response = $api->api('push', array('post_id' => $post_id));
+				$api_response = $api->api('push', $api_args);
 
 				// mark this as having been pushed so we don't re-enter
 				$this->_pushed = TRUE;
